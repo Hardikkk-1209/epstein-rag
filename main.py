@@ -14,7 +14,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve media files
 app.mount("/media", StaticFiles(directory="data"), name="media")
 app.mount("/extracted", StaticFiles(directory="data/extracted_images"), name="extracted")
 

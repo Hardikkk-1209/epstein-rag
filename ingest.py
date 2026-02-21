@@ -4,6 +4,7 @@ import faiss
 import numpy as np
 import pickle
 import json
+import hashlib
 from sentence_transformers import SentenceTransformer
 
 # ── Config ──
@@ -40,15 +41,34 @@ def chunk_text(text, source):
 def extract_images_from_pdfs():
     os.makedirs(EXTRACTED_IMAGES_DIR, exist_ok=True)
     total = 0
+    seen_hashes = set()  # track duplicates
 
     for root, dirs, files in os.walk(DATA_DIR):
+        if "extracted_images" in root:
+            continue
         for filename in files:
             if not filename.endswith(".pdf"):
                 continue
+
             path = os.path.join(root, filename)
             doc = fitz.open(path)
 
             for page_num, page in enumerate(doc):
+                page_text = page.get_text().lower()[:200]
+
+                keywords = []
+                important = ["maxwell", "epstein", "giuffre", "andrew",
+                            "clinton", "trump", "spacey", "island",
+                            "virginia", "ghislaine", "jeffrey", "victim",
+                            "deposition", "trafficking", "abuse"]
+
+                for word in important:
+                    if word in page_text:
+                        keywords.append(word)
+
+                keyword_str = "_".join(keywords[:3]) if keywords else f"page{page_num+1}"
+                source_name = filename.replace(".pdf", "").replace(" ", "_")[:30]
+
                 images = page.get_images(full=True)
                 for img_index, img in enumerate(images):
                     xref = img[0]
@@ -56,14 +76,25 @@ def extract_images_from_pdfs():
                     image_bytes = base_image["image"]
                     image_ext = base_image["ext"]
 
-                    img_name = f"{filename}_page{page_num+1}_img{img_index+1}.{image_ext}"
+                    # Skip tiny images under 10KB
+                    if len(image_bytes) < 10000:
+                        continue
+
+                    # Skip duplicate images
+                    img_hash = hashlib.md5(image_bytes).hexdigest()
+                    if img_hash in seen_hashes:
+                        continue
+                    seen_hashes.add(img_hash)
+
+                    img_name = f"{keyword_str}_{source_name}_p{page_num+1}_{img_index+1}.{image_ext}"
                     img_path = os.path.join(EXTRACTED_IMAGES_DIR, img_name)
 
                     with open(img_path, "wb") as f:
                         f.write(image_bytes)
                     total += 1
+                    print(f"  → Saved image: {img_name}")
 
-    print(f"✅ Extracted {total} images from PDFs")
+    print(f"✅ Extracted {total} unique images from PDFs")
 
 def build_media_index():
     media = []
@@ -101,6 +132,8 @@ def ingest():
     all_chunks = []
 
     for root, dirs, files in os.walk(DATA_DIR):
+        if "extracted_images" in root:
+            continue
         for filename in files:
             path = os.path.join(root, filename)
             print(f"Processing: {filename}")
@@ -135,7 +168,6 @@ def ingest():
 
     print(f"✅ FAISS index saved — {index.ntotal} vectors indexed")
 
-    # Extract images and build media index
     print("\nExtracting images from PDFs...")
     extract_images_from_pdfs()
     build_media_index()
