@@ -6,6 +6,7 @@
   <title>Epstein Files — Research Terminal</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
   <style>
+    
     :root {
       --bg: #080808;
       --surface: #0f0f0f;
@@ -469,6 +470,82 @@
       #chat { padding: 20px; }
       .input-area { padding: 16px 20px; }
     }
+    .media-block {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.media-item {
+  border: 1px solid rgba(232,197,71,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 280px;
+}
+
+.media-item img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.media-item video {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.media-label {
+  padding: 6px 10px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: var(--accent-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.media-block {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.media-item {
+  border: 1px solid rgba(232,197,71,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 280px;
+}
+
+.media-item img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.media-item video {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.media-label {
+  padding: 6px 10px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: var(--accent-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
   </style>
 </head>
 <body>
@@ -606,15 +683,39 @@
       });
       const data = await res.json();
 
+      // Sources
       const sources = data.sources?.length
         ? `<div class="sources-block">▸ SOURCE: ${data.sources.join(" · ")}</div>`
         : "";
 
+      // Media — images and videos
+      let mediaHtml = "";
+      if (data.media && data.media.length > 0) {
+        const mediaItems = data.media.map(item => {
+          const url = "/media/" + item.path.replace("data/", "");
+          if (item.type === "image") {
+            return `<div class="media-item">
+              <img src="${url}" alt="${item.filename}">
+              <div class="media-label">▸ ${item.filename}</div>
+            </div>`;
+          } else {
+            return `<div class="media-item">
+              <video controls>
+                <source src="${url}">
+              </video>
+              <div class="media-label">▸ ${item.filename}</div>
+            </div>`;
+          }
+        }).join("");
+        mediaHtml = `<div class="media-block">${mediaItems}</div>`;
+      }
+
       document.getElementById(loadingId).outerHTML = `
         <div class="msg-block">
           <div class="msg-prefix bot-prefix">SYS://</div>
-          <div class="msg-content">${data.answer}${sources}</div>
+          <div class="msg-content">${data.answer}${sources}${mediaHtml}</div>
         </div>`;
+
     } catch (err) {
       document.getElementById(loadingId).outerHTML = `
         <div class="msg-block">
