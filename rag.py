@@ -21,7 +21,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set. Model calls will fail.")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+_client = None
+def get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=GEMINI_API_KEY)
+    return _client
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -258,7 +263,7 @@ def ask(query: str, mode="strict", filters=None):
     prompt = prompt_builder(query, chunks)
 
     try:
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(...)(
             model="gemini-2.0-flash",
             contents=prompt,
         )
