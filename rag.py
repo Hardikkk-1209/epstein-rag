@@ -8,7 +8,7 @@ from sentence_transformers import SentenceTransformer
 from google import genai
 
 # ─────────────────────────────────────────────
-# LOAD ENV (FASTAPI SAFE)
+# LOAD ENV
 # ─────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,38 +27,56 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # CONFIG
 # ─────────────────────────────────────────────
 
-INDEX_PATH = "vectorstore/faiss.index"
-CHUNKS_PATH = "vectorstore/chunks.pkl"
-MEDIA_INDEX_PATH = "vectorstore/media_index.json"
+INDEX_PATH = os.path.join(BASE_DIR, "vectorstore/faiss.index")
+CHUNKS_PATH = os.path.join(BASE_DIR, "vectorstore/chunks.pkl")
+MEDIA_INDEX_PATH = os.path.join(BASE_DIR, "vectorstore/media_index.json")
 
 TOP_K_FETCH = 40
 TOP_K_FINAL = 5
 
 # ─────────────────────────────────────────────
-# LOAD MODELS + DATA
+# LAZY LOADING — model/index load on first request
 # ─────────────────────────────────────────────
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
-index = faiss.read_index(INDEX_PATH)
+_model = None
+_index = None
+_all_chunks = None
+_media_index = None
 
-with open(CHUNKS_PATH, "rb") as f:
-    all_chunks = pickle.load(f)
+def get_resources():
+    global _model, _index, _all_chunks, _media_index
 
-try:
-    with open(MEDIA_INDEX_PATH, "r") as f:
-        media_index = json.load(f)
-except:
-    media_index = []
+    if _model is None:
+        print("Loading SentenceTransformer model...")
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+
+    if _index is None:
+        print("Loading FAISS index...")
+        _index = faiss.read_index(INDEX_PATH)
+
+    if _all_chunks is None:
+        print("Loading chunks...")
+        with open(CHUNKS_PATH, "rb") as f:
+            _all_chunks = pickle.load(f)
+
+    if _media_index is None:
+        try:
+            with open(MEDIA_INDEX_PATH, "r") as f:
+                _media_index = json.load(f)
+        except:
+            _media_index = []
+
+    return _model, _index, _all_chunks, _media_index
 
 # ─────────────────────────────────────────────
 # FILTER CLASSIFIER
 # ─────────────────────────────────────────────
 
 FILTER_KEYWORDS = {
-    "court": ["court","judge","docket","indictment","motion","order","complaint","sdny"],
-    "depo": ["deposition","testimony","sworn","witness","q:","a:"],
-    "flight": ["flight log","flight manifest","pilot","aircraft","visoski"],
-    "media": ["miami herald","new york times","reporter","journalist","article"],
+    "court": ["court", "judge", "docket", "indictment", "motion", "order", "complaint", "sdny"],
+    "depo": ["deposition", "testimony", "sworn", "witness", "q:", "a:"],
+    "flight": ["flight log", "flight manifest", "pilot", "aircraft", "visoski"],
+    "media": ["miami herald", "new york times", "reporter", "journalist", "article"],
 }
 
 def classify_chunk(text: str) -> set:
@@ -74,15 +92,15 @@ def classify_chunk(text: str) -> set:
 # ─────────────────────────────────────────────
 
 EPSTEIN_KEYWORDS = {
-    "epstein","maxwell","giuffre","wexner","prince andrew",
-    "flight logs","deposition","trial","indictment",
-    "donald trump","bill gates"
+    "epstein", "maxwell", "giuffre", "wexner", "prince andrew",
+    "flight logs", "deposition", "trial", "indictment",
+    "donald trump", "bill gates"
 }
 
 def is_epstein_related(query: str) -> bool:
     query_lower = query.lower()
     if len(query_lower.split()) <= 2:
-        return True  # allow entity searches
+        return True
     return any(keyword in query_lower for keyword in EPSTEIN_KEYWORDS)
 
 # ─────────────────────────────────────────────
@@ -90,6 +108,8 @@ def is_epstein_related(query: str) -> bool:
 # ─────────────────────────────────────────────
 
 def retrieve(query: str, active_filters=None):
+    model, index, all_chunks, _ = get_resources()
+
     query_vector = np.array(model.encode([query])).astype("float32")
 
     fetch_k = TOP_K_FETCH if active_filters else TOP_K_FINAL
@@ -122,7 +142,9 @@ def retrieve(query: str, active_filters=None):
 # ─────────────────────────────────────────────
 
 def find_related_media(query: str, answer: str = "", max_results: int = 3):
-    stop_words = {"the","a","an","in","on","at","to","for","of","and","or","is"}
+    _, _, _, media_index = get_resources()
+
+    stop_words = {"the", "a", "an", "in", "on", "at", "to", "for", "of", "and", "or", "is"}
     query_words = set(query.lower().split()) - stop_words
 
     scored = []
@@ -147,7 +169,6 @@ def build_prompt_strict(query: str, chunks: list):
     context = "\n\n---\n\n".join(
         [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
     )
-
     return f"""You are a legal research analyst reviewing Epstein court documents.
 
 STRICT RULES:
@@ -167,7 +188,6 @@ def build_prompt_summary(query: str, chunks: list):
     context = "\n\n---\n\n".join(
         [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
     )
-
     return f"""Summarize the findings clearly for a general audience.
 
 DOCUMENT EXCERPTS:
@@ -182,7 +202,6 @@ def build_prompt_timeline(query: str, chunks: list):
     context = "\n\n---\n\n".join(
         [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
     )
-
     return f"""Create a chronological timeline of events.
 
 DOCUMENT EXCERPTS:
@@ -207,12 +226,10 @@ def extract_text(response):
     try:
         if hasattr(response, "text") and response.text:
             return response.text
-
         if hasattr(response, "candidates"):
             return response.candidates[0].content.parts[0].text
     except:
         pass
-
     return "No response generated."
 
 # ─────────────────────────────────────────────
@@ -242,7 +259,7 @@ def ask(query: str, mode="strict", filters=None):
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
         )
         answer = extract_text(response)
