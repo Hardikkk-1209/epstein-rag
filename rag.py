@@ -13,7 +13,11 @@ MEDIA_INDEX_PATH = "vectorstore/media_index.json"
 TOP_K = 5   # reduced to prevent token overflow
 
 # 🔴 PUT YOUR GEMINI API KEY HERE
-GEMINI_API_KEY = "AIzaSyC59vRsthxt6LnbTAQSQcmq5OVIxmExrfI"
+import os
+from google import genai
+from dotenv import load_dotenv
+load_dotenv() 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # ── Gemini Client (NEW SDK) ──
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -133,7 +137,7 @@ def ask(query: str):
 
     # ✅ NEW GEMINI CALL (WORKING)
     response = client.models.generate_content(
-        model="gemini-3-flash-preview",
+        model="gemini-2.5-flash-preview",
         contents=prompt
     )
 
