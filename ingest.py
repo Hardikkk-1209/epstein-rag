@@ -1,157 +1,68 @@
 import os
-import fitz
 import faiss
 import numpy as np
 import pickle
 import json
-import hashlib
 from sentence_transformers import SentenceTransformer
 
 # ── Config ──
-DATA_DIR = "data"
+CHUNKS_DIR = "data/chunks"        # ← folder with your .jsonl files
 INDEX_PATH = "vectorstore/faiss.index"
 CHUNKS_PATH = "vectorstore/chunks.pkl"
-MEDIA_INDEX_PATH = "vectorstore/media_index.json"
-EXTRACTED_IMAGES_DIR = "data/extracted_images"
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 50
-
-SUPPORTED_IMAGES = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
-SUPPORTED_VIDEOS = [".mp4", ".mov", ".avi", ".mkv", ".webm"]
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def extract_text_from_pdf(path):
-    doc = fitz.open(path)
-    return " ".join(page.get_text() for page in doc)
-
-def extract_text_from_txt(path):
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        return f.read()
-
-def chunk_text(text, source):
-    words = text.split()
-    chunks = []
-    for i in range(0, len(words), CHUNK_SIZE - CHUNK_OVERLAP):
-        chunk = " ".join(words[i:i + CHUNK_SIZE])
-        if chunk.strip():
-            chunks.append({"text": chunk, "source": source})
-    return chunks
-
-def extract_images_from_pdfs():
-    os.makedirs(EXTRACTED_IMAGES_DIR, exist_ok=True)
-    total = 0
-    seen_hashes = set()  # track duplicates
-
-    for root, dirs, files in os.walk(DATA_DIR):
-        if "extracted_images" in root:
-            continue
-        for filename in files:
-            if not filename.endswith(".pdf"):
-                continue
-
-            path = os.path.join(root, filename)
-            doc = fitz.open(path)
-
-            for page_num, page in enumerate(doc):
-                page_text = page.get_text().lower()[:200]
-
-                keywords = []
-                important = ["maxwell", "epstein", "giuffre", "andrew",
-                            "clinton", "trump", "spacey", "island",
-                            "virginia", "ghislaine", "jeffrey", "victim",
-                            "deposition", "trafficking", "abuse"]
-
-                for word in important:
-                    if word in page_text:
-                        keywords.append(word)
-
-                keyword_str = "_".join(keywords[:3]) if keywords else f"page{page_num+1}"
-                source_name = filename.replace(".pdf", "").replace(" ", "_")[:30]
-
-                images = page.get_images(full=True)
-                for img_index, img in enumerate(images):
-                    xref = img[0]
-                    base_image = doc.extract_image(xref)
-                    image_bytes = base_image["image"]
-                    image_ext = base_image["ext"]
-
-                    # Skip tiny images under 10KB
-                    if len(image_bytes) < 10000:
-                        continue
-
-                    # Skip duplicate images
-                    img_hash = hashlib.md5(image_bytes).hexdigest()
-                    if img_hash in seen_hashes:
-                        continue
-                    seen_hashes.add(img_hash)
-
-                    img_name = f"{keyword_str}_{source_name}_p{page_num+1}_{img_index+1}.{image_ext}"
-                    img_path = os.path.join(EXTRACTED_IMAGES_DIR, img_name)
-
-                    with open(img_path, "wb") as f:
-                        f.write(image_bytes)
-                    total += 1
-                    print(f"  → Saved image: {img_name}")
-
-    print(f"✅ Extracted {total} unique images from PDFs")
-
-def build_media_index():
-    media = []
-    scan_dirs = [DATA_DIR, EXTRACTED_IMAGES_DIR]
-
-    for scan_dir in scan_dirs:
-        if not os.path.exists(scan_dir):
-            continue
-        for root, dirs, files in os.walk(scan_dir):
-            for filename in files:
-                ext = os.path.splitext(filename)[1].lower()
-                path = os.path.join(root, filename)
-
-                if ext in SUPPORTED_IMAGES:
-                    media.append({
-                        "type": "image",
-                        "filename": filename,
-                        "path": path,
-                        "keywords": filename.lower().replace("_", " ").replace("-", " ")
-                    })
-                elif ext in SUPPORTED_VIDEOS:
-                    media.append({
-                        "type": "video",
-                        "filename": filename,
-                        "path": path,
-                        "keywords": filename.lower().replace("_", " ").replace("-", " ")
-                    })
-
-    with open(MEDIA_INDEX_PATH, "w") as f:
-        json.dump(media, f, indent=2)
-
-    print(f"✅ Media index saved — {len(media)} media files indexed")
-
-def ingest():
+def load_jsonl_chunks():
     all_chunks = []
 
-    for root, dirs, files in os.walk(DATA_DIR):
-        if "extracted_images" in root:
-            continue
-        for filename in files:
-            path = os.path.join(root, filename)
-            print(f"Processing: {filename}")
+    if not os.path.exists(CHUNKS_DIR):
+        print(f"❌ Chunks directory not found: {CHUNKS_DIR}")
+        return all_chunks
 
-            if filename.endswith(".pdf"):
-                text = extract_text_from_pdf(path)
-            elif filename.endswith(".txt"):
-                text = extract_text_from_txt(path)
-            else:
-                continue
+    files = [f for f in os.listdir(CHUNKS_DIR) if f.endswith(".jsonl")]
+    print(f"Found {len(files)} .jsonl files\n")
 
-            chunks = chunk_text(text, source=filename)
-            all_chunks.extend(chunks)
-            print(f"  → {len(chunks)} chunks extracted")
+    for filename in sorted(files):
+        path = os.path.join(CHUNKS_DIR, filename)
+        file_chunks = 0
 
-    print(f"\nTotal chunks: {len(all_chunks)}")
-    print("Generating embeddings...")
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                    # Normalize to match what rag.py expects
+                    all_chunks.append({
+                        "text": chunk.get("text", ""),
+                        "source": chunk.get("source_filename", filename),
+                        "chunk_id": chunk.get("chunk_id", ""),
+                        "doc_id": chunk.get("doc_id", ""),
+                        "page_start": chunk.get("page_start", None),
+                        "page_end": chunk.get("page_end", None),
+                    })
+                    file_chunks += 1
+                except json.JSONDecodeError as e:
+                    print(f"  ⚠️  Skipping bad line in {filename}: {e}")
 
+        print(f"  ✅ {filename} → {file_chunks} chunks")
+
+    return all_chunks
+
+def ingest():
+    print("Loading chunks from JSONL files...\n")
+    all_chunks = load_jsonl_chunks()
+
+    if not all_chunks:
+        print("❌ No chunks loaded. Check your data/chunks folder.")
+        return
+
+    # Filter out empty text
+    all_chunks = [c for c in all_chunks if c["text"].strip()]
+    print(f"\nTotal chunks loaded: {len(all_chunks)}")
+
+    print("\nGenerating embeddings...")
     texts = [c["text"] for c in all_chunks]
     embeddings = model.encode(texts, show_progress_bar=True)
     embeddings = np.array(embeddings).astype("float32")
@@ -166,11 +77,7 @@ def ingest():
     with open(CHUNKS_PATH, "wb") as f:
         pickle.dump(all_chunks, f)
 
-    print(f"✅ FAISS index saved — {index.ntotal} vectors indexed")
-
-    print("\nExtracting images from PDFs...")
-    extract_images_from_pdfs()
-    build_media_index()
+    print(f"\n✅ Done! {index.ntotal} vectors indexed and saved.")
 
 if __name__ == "__main__":
     ingest()

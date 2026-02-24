@@ -15,7 +15,7 @@ app.add_middleware(
 )
 
 app.mount("/media", StaticFiles(directory="data"), name="media")
-app.mount("/extracted", StaticFiles(directory="data/extracted_images"), name="extracted")
+
 
 class Query(BaseModel):
     question: str
@@ -32,3 +32,6 @@ def ask_question(query: Query):
 @app.get("/health")
 def health():
     return {"status": "running"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

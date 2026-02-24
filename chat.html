@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,6 +21,26 @@
       --text-muted: #3a3632;
       --user-bg: #131313;
       --bot-bg: #0c0c0c;
+      --toggle-bg: #1a1a1a;
+      --toggle-border: rgba(255,255,255,0.1);
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f0e8;
+      --surface: #ede8dc;
+      --surface2: #e5dfd0;
+      --border: rgba(0,0,0,0.08);
+      --accent: #b8860b;
+      --accent-dim: rgba(184,134,11,0.1);
+      --accent-glow: rgba(184,134,11,0.04);
+      --red: #c0392b;
+      --text: #000000;
+      --text-dim: #000000;
+      --text-muted: #000000;
+      --user-bg: #ede8dc;
+      --bot-bg: #f0ebe0;
+      --toggle-bg: #ddd8cc;
+      --toggle-border: rgba(0,0,0,0.1);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,10 +54,11 @@
       flex-direction: column;
       overflow: hidden;
       position: relative;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
-    /* Scanline effect */
-    body::before {
+    /* Scanline effect - only in dark mode */
+    [data-theme="dark"] body::before {
       content: '';
       position: fixed;
       inset: 0;
@@ -52,7 +73,6 @@
       z-index: 1000;
     }
 
-    /* Noise texture */
     body::after {
       content: '';
       position: fixed;
@@ -75,6 +95,7 @@
       flex-shrink: 0;
       position: relative;
       z-index: 10;
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
 
     .header-left {
@@ -144,6 +165,68 @@
 
     .doc-count span { color: var(--accent); }
 
+    /* ── THEME TOGGLE ── */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 6px 12px;
+      background: var(--toggle-bg);
+      border: 1px solid var(--toggle-border);
+      border-radius: 20px;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+    }
+
+    .toggle-track {
+      width: 32px;
+      height: 16px;
+      background: var(--border);
+      border-radius: 8px;
+      position: relative;
+      transition: background 0.3s ease;
+      border: 1px solid var(--toggle-border);
+    }
+
+    [data-theme="light"] .toggle-track {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .toggle-thumb {
+      width: 10px;
+      height: 10px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: all 0.3s ease;
+    }
+
+    [data-theme="light"] .toggle-thumb {
+      left: 18px;
+      background: var(--accent);
+    }
+
+    .toggle-icon {
+      font-size: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-label {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      transition: color 0.3s ease;
+    }
+
     /* ── MAIN LAYOUT ── */
     .layout {
       display: flex;
@@ -160,6 +243,7 @@
       flex-direction: column;
       flex-shrink: 0;
       padding: 24px 0;
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
 
     .sidebar-label {
@@ -227,7 +311,6 @@
       overflow: hidden;
     }
 
-    /* Breadcrumb */
     .breadcrumb {
       padding: 10px 32px;
       font-size: 10px;
@@ -239,7 +322,6 @@
 
     .breadcrumb span { color: var(--text-dim); }
 
-    /* Messages */
     #chat {
       flex: 1;
       overflow-y: auto;
@@ -255,7 +337,6 @@
     #chat::-webkit-scrollbar-track { background: transparent; }
     #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    /* Message blocks */
     .msg-block {
       display: flex;
       gap: 16px;
@@ -291,7 +372,7 @@
     }
 
     .msg-content.user-content {
-      color: rgba(212,208,200,0.85);
+      color: var(--text-dim);
     }
 
     .sources-block {
@@ -308,7 +389,6 @@
       gap: 8px;
     }
 
-    /* Loading animation */
     .loading-dots {
       display: flex;
       gap: 4px;
@@ -332,7 +412,6 @@
       40% { opacity: 1; transform: scale(1); }
     }
 
-    /* Welcome message */
     .welcome {
       padding: 32px 0;
       border-bottom: 1px solid var(--border);
@@ -387,6 +466,7 @@
       border-top: 1px solid var(--border);
       background: var(--surface);
       flex-shrink: 0;
+      transition: background 0.3s ease;
     }
 
     .input-wrapper {
@@ -463,51 +543,52 @@
       font-size: 9px;
     }
 
-    /* Responsive */
+    .media-block {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .media-item {
+      border: 1px solid rgba(232,197,71,0.2);
+      border-radius: 6px;
+      overflow: hidden;
+      max-width: 280px;
+    }
+
+    .media-item img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .media-item video {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .media-label {
+      padding: 6px 10px;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      background: var(--accent-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     @media (max-width: 768px) {
       .sidebar { display: none; }
       header { padding: 0 20px; }
       #chat { padding: 20px; }
       .input-area { padding: 16px 20px; }
+      .header-sub { display: none; }
     }
-    .media-block {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.media-item {
-  border: 1px solid rgba(232,197,71,0.2);
-  border-radius: 6px;
-  overflow: hidden;
-  max-width: 280px;
-}
-
-.media-item img {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
-}
-
-.media-item video {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
-}
-
-.media-label {
-  padding: 6px 10px;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  background: var(--accent-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
   </style>
 </head>
 <body>
@@ -515,7 +596,7 @@
 <!-- HEADER -->
 <header>
   <div class="header-left">
-    <div class="logo-text">REWARC//FILES</div>
+    <div class="logo-text">EPSTEIN FILES</div>
     <div class="header-divider"></div>
     <div class="header-sub">Epstein Document Intelligence</div>
   </div>
@@ -524,7 +605,16 @@
       <div class="dot"></div>
       SYSTEM ONLINE
     </div>
-    <div class="doc-count">INDEXED: <span>551</span> CHUNKS</div>
+    <div class="doc-count">INDEXED: <span>33715</span> CHUNKS</div>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <span class="toggle-icon" id="toggle-icon">🌙</span>
+      <div class="toggle-track">
+        <div class="toggle-thumb"></div>
+      </div>
+      <span class="toggle-label" id="toggle-label">DARK</span>
+    </div>
   </div>
 </header>
 
@@ -604,6 +694,25 @@
 </div>
 
 <script>
+  // ── Theme toggle ──
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute("data-theme") === "dark";
+    html.setAttribute("data-theme", isDark ? "light" : "dark");
+    document.getElementById("toggle-icon").textContent = isDark ? "☀️" : "🌙";
+    document.getElementById("toggle-label").textContent = isDark ? "LIGHT" : "DARK";
+    localStorage.setItem("theme", isDark ? "light" : "dark");
+  }
+
+  // Restore saved theme on load
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  if (savedTheme === "light") {
+    document.getElementById("toggle-icon").textContent = "☀️";
+    document.getElementById("toggle-label").textContent = "LIGHT";
+  }
+
+  // ── Chat ──
   function fillQuery(el) {
     document.getElementById("input").value = el.textContent;
     document.getElementById("input").focus();
@@ -615,7 +724,6 @@
     const question = input.value.trim();
     if (!question) return;
 
-    // User message
     chat.innerHTML += `
       <div class="msg-block">
         <div class="msg-prefix user-prefix">YOU://</div>
@@ -624,7 +732,6 @@
     input.value = "";
     chat.scrollTop = chat.scrollHeight;
 
-    // Loading
     const loadingId = "load_" + Date.now();
     chat.innerHTML += `
       <div class="msg-block" id="${loadingId}">
@@ -645,12 +752,10 @@
       });
       const data = await res.json();
 
-      // Sources
       const sources = data.sources?.length
         ? `<div class="sources-block">▸ SOURCE: ${data.sources.join(" · ")}</div>`
         : "";
 
-      // Media — images and videos
       let mediaHtml = "";
       if (data.media && data.media.length > 0) {
         const mediaItems = data.media.map(item => {
