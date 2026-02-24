@@ -19,7 +19,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY not found in environment.")
+    print("WARNING: GEMINI_API_KEY not set. Model calls will fail.")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
