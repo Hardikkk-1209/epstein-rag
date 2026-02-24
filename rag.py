@@ -2,29 +2,43 @@ import faiss
 import pickle
 import numpy as np
 import json
+import os
+from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from google import genai
 
-# ── Config ──
+# ─────────────────────────────────────────────
+# LOAD ENV (FASTAPI SAFE)
+# ─────────────────────────────────────────────
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, ".env")
+
+load_dotenv(dotenv_path=ENV_PATH)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY not found in environment.")
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+# ─────────────────────────────────────────────
+# CONFIG
+# ─────────────────────────────────────────────
+
 INDEX_PATH = "vectorstore/faiss.index"
 CHUNKS_PATH = "vectorstore/chunks.pkl"
 MEDIA_INDEX_PATH = "vectorstore/media_index.json"
 
-TOP_K = 5   # reduced to prevent token overflow
+TOP_K_FETCH = 40
+TOP_K_FINAL = 5
 
-# 🔴 PUT YOUR GEMINI API KEY HERE
-import os
-from google import genai
-from dotenv import load_dotenv
-load_dotenv() 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# ─────────────────────────────────────────────
+# LOAD MODELS + DATA
+# ─────────────────────────────────────────────
 
-# ── Gemini Client (NEW SDK) ──
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-# ── Load models and index ──
 model = SentenceTransformer("all-MiniLM-L6-v2")
-
 index = faiss.read_index(INDEX_PATH)
 
 with open(CHUNKS_PATH, "rb") as f:
@@ -36,46 +50,80 @@ try:
 except:
     media_index = []
 
-# ── Keyword filter ──
+# ─────────────────────────────────────────────
+# FILTER CLASSIFIER
+# ─────────────────────────────────────────────
+
+FILTER_KEYWORDS = {
+    "court": ["court","judge","docket","indictment","motion","order","complaint","sdny"],
+    "depo": ["deposition","testimony","sworn","witness","q:","a:"],
+    "flight": ["flight log","flight manifest","pilot","aircraft","visoski"],
+    "media": ["miami herald","new york times","reporter","journalist","article"],
+}
+
+def classify_chunk(text: str) -> set:
+    text_lower = text.lower()
+    buckets = set()
+    for category, keywords in FILTER_KEYWORDS.items():
+        if any(kw in text_lower for kw in keywords):
+            buckets.add(category)
+    return buckets
+
+# ─────────────────────────────────────────────
+# EPSTEIN RELEVANCE CHECK
+# ─────────────────────────────────────────────
+
 EPSTEIN_KEYWORDS = {
-    "abuse","accusers","acosta","alex acosta","alan dershowitz","allegations","andrew albert christian edward","arrests","associate","attorney","attorney general","bail","black book","bill clinton","bribery","brunel","jean-luc brunel","case","case files","charges","child abuse","civil lawsuit","client list","clinton","co-conspirator","compensation program","conspiracy","court","court filings","deposition","dershowitz","documents","docket","epstein","jeffrey epstein","epstein estate","epstein victims compensation program","evidence","exhibits","fbi","federal case","federal court","financial records","flight logs","forfeiture","ghislaine","ghislaine maxwell","giuffre","virginia giuffre","grand jury","grooming","hawking","stephen hawking","high-profile associates","house oversight","immunity deal","indictment","investigation","island","little saint james","great saint james","jeffrey","judge","judicial review","kaufmann","knowledge records","lawsuit","legal filings","law enforcement","lolita express","leslie wexner","wexner","manhattan jail","metropolitan correctional center","maxwell trial","miami herald","julie k brown","minor allegations","modeling agency","non-prosecution agreement","nygard","peter nygard","new york federal court","offshore accounts","oversight hearing","palm beach","palm beach police","pilot","lawrence visoski","plea deal","prince andrew","prosecution","questioning transcript","ransome","maria farmer","annie farmer","recruitment","redacted names","restitution","rico","schwarzman","stephen schwarzman","sealed records","settlement","sex offender","sex trafficking","sexual abuse","southern district of new york","subpoena","sweetheart deal","teneo","testimony","trafficking","trial","trial transcript","underage allegations","unsealed documents","u.s. virgin islands","denise george","victim","victim statements","victim impact","virgin islands litigation","witness","wire transfer","zorro ranch","new mexico ranch","new york mansion","palm beach mansion","private jet","flight manifest","address book","contact list","affidavit","grand jury records","civil complaint","criminal complaint","federal indictment","plea agreement","non-prosecution deal","sealed exhibit","unredacted files","court transcript","evidence list","discovery files","deposition transcript","island visitors","estate litigation","receiver","trust records","financial network","associates list","socialite network","media investigation","document dump","unsealed docket","federal prosecutors","defense attorneys","witness list","pilot testimony","house managers","oversight committee","legal motion","jury selection","sentencing","appeal","custody records","detention hearing","bail hearing","survivor testimony","accuser statements","civil settlement","confidential settlement","ndas","non disclosure agreement","immunity clause","federal bureau of investigation","department of justice","sdny prosecutors","u.s. attorney","victim advocacy","support fund","recruiter allegations","assistant names","house staff","security staff","chauffeur","butler","scheduler","calendar records","visitor logs","security footage","phone records","email records","travel itinerary","passport records","offshore trust","shell companies","financial transfers","charter flights","island staff","estate manager","property records","zoning records","search warrants","evidence locker","case timeline","media coverage","investigative reporting","document archive","public records"
+    "epstein","maxwell","giuffre","wexner","prince andrew",
+    "flight logs","deposition","trial","indictment",
+    "donald trump","bill gates"
 }
 
 def is_epstein_related(query: str) -> bool:
     query_lower = query.lower()
+    if len(query_lower.split()) <= 2:
+        return True  # allow entity searches
     return any(keyword in query_lower for keyword in EPSTEIN_KEYWORDS)
 
-# ── Retrieval ──
-def retrieve(query: str):
-    query_vector = model.encode([query])
-    query_vector = np.array(query_vector).astype("float32")
+# ─────────────────────────────────────────────
+# RETRIEVAL
+# ─────────────────────────────────────────────
 
-    distances, indices = index.search(query_vector, TOP_K)
+def retrieve(query: str, active_filters=None):
+    query_vector = np.array(model.encode([query])).astype("float32")
 
-    results = []
+    fetch_k = TOP_K_FETCH if active_filters else TOP_K_FINAL
+    distances, indices = index.search(query_vector, fetch_k)
+
+    candidates = []
     for i, idx in enumerate(indices[0]):
         if idx != -1:
-            results.append({
+            candidates.append({
                 "text": all_chunks[idx]["text"],
                 "source": all_chunks[idx]["source"],
-                "score": float(distances[0][i])
+                "score": float(distances[0][i]),
             })
-    return results
 
-# ── Media Matching ──
+    if not active_filters:
+        return candidates[:TOP_K_FINAL]
+
+    filtered = [
+        c for c in candidates
+        if classify_chunk(c["text"]) & set(active_filters)
+    ]
+
+    if len(filtered) < 2:
+        return candidates[:TOP_K_FINAL]
+
+    return filtered[:TOP_K_FINAL]
+
+# ─────────────────────────────────────────────
+# MEDIA MATCHING
+# ─────────────────────────────────────────────
+
 def find_related_media(query: str, answer: str = "", max_results: int = 3):
-
-    stop_words = {
-        "the","a","an","in","on","at","to","for","of","and","or","is","was","were","are",
-        "what","who","how","did","do","does","with","from","by","about","that","this","it",
-        "be","have","has","had","not","but","they","he","she","we","you","i","me","my",
-        "his","her","named","newly","unsealed","documents","jeffrey","epstein","files",
-        "legal","services","magna","case","court","document","page","all"
-    }
-
+    stop_words = {"the","a","an","in","on","at","to","for","of","and","or","is"}
     query_words = set(query.lower().split()) - stop_words
-    if not query_words:
-        return []
 
     scored = []
     for item in media_index:
@@ -85,68 +133,128 @@ def find_related_media(query: str, answer: str = "", max_results: int = 3):
         filename_words = set(item["keywords"].split()) - stop_words
         matches = query_words & filename_words
 
-        if len(matches) >= 1:
+        if matches:
             scored.append((len(matches), item))
 
     scored.sort(reverse=True, key=lambda x: x[0])
     return [item for _, item in scored[:max_results]]
 
-# ── Prompt Builder ──
-def build_prompt(query: str, chunks: list):
+# ─────────────────────────────────────────────
+# PROMPTS
+# ─────────────────────────────────────────────
 
+def build_prompt_strict(query: str, chunks: list):
     context = "\n\n---\n\n".join(
         [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
     )
 
-    return f"""You are a research assistant with access ONLY to the Epstein court documents and House Oversight files.
+    return f"""You are a legal research analyst reviewing Epstein court documents.
 
 STRICT RULES:
-1. Answer based STRICTLY on the document excerpts below.
-2. Include specific names, dates, case numbers, and legal details wherever available.
-3. If the answer is not in the documents say: "This information is not found in the available Epstein files."
-4. Do not speculate beyond what the documents contain.
+- Answer ONLY from excerpts.
+- Cite sources inline.
+- If missing say: "This information is not found in the available Epstein files."
 
 DOCUMENT EXCERPTS:
 {context}
 
-USER QUESTION:
+QUESTION:
 {query}
 
 ANSWER:"""
 
-# ── Main Ask Function ──
-def ask(query: str):
+def build_prompt_summary(query: str, chunks: list):
+    context = "\n\n---\n\n".join(
+        [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
+    )
+
+    return f"""Summarize the findings clearly for a general audience.
+
+DOCUMENT EXCERPTS:
+{context}
+
+QUESTION:
+{query}
+
+SUMMARY:"""
+
+def build_prompt_timeline(query: str, chunks: list):
+    context = "\n\n---\n\n".join(
+        [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
+    )
+
+    return f"""Create a chronological timeline of events.
+
+DOCUMENT EXCERPTS:
+{context}
+
+QUESTION:
+{query}
+
+TIMELINE:"""
+
+MODE_PROMPT_BUILDERS = {
+    "strict": build_prompt_strict,
+    "summary": build_prompt_summary,
+    "timeline": build_prompt_timeline,
+}
+
+# ─────────────────────────────────────────────
+# SAFE GEMINI RESPONSE PARSER
+# ─────────────────────────────────────────────
+
+def extract_text(response):
+    try:
+        if hasattr(response, "text") and response.text:
+            return response.text
+
+        if hasattr(response, "candidates"):
+            return response.candidates[0].content.parts[0].text
+    except:
+        pass
+
+    return "No response generated."
+
+# ─────────────────────────────────────────────
+# MAIN ASK FUNCTION
+# ─────────────────────────────────────────────
+
+def ask(query: str, mode="strict", filters=None):
 
     if not is_epstein_related(query):
         return {
             "answer": "I can only answer questions related to the Epstein case, associated individuals, and related investigations.",
             "sources": [],
-            "media": []
+            "media": [],
         }
 
-    chunks = retrieve(query)
+    chunks = retrieve(query, active_filters=filters if filters else None)
 
     if not chunks:
         return {
-            "answer": "No relevant documents found for your query.",
+            "answer": "No relevant documents found.",
             "sources": [],
-            "media": []
+            "media": [],
         }
 
-    prompt = build_prompt(query, chunks)
+    prompt_builder = MODE_PROMPT_BUILDERS.get(mode, build_prompt_strict)
+    prompt = prompt_builder(query, chunks)
 
-    # ✅ NEW GEMINI CALL (WORKING)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-preview",
-        contents=prompt
-    )
-
-    answer = response.text if hasattr(response, "text") else str(response)
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        answer = extract_text(response)
+    except Exception as e:
+        answer = f"Model error: {str(e)}"
 
     media = find_related_media(query, answer)
 
     return {
         "answer": answer,
         "sources": list(set(c["source"] for c in chunks)),
-        "media": media
+        "media": media,
+        "mode": mode,
+        "filters_applied": filters or [],
     }

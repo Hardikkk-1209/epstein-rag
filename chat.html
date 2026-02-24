@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Epstein Files — Research Terminal</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Bebas+Neue&display=swap"
+    rel="stylesheet">
   <style>
-    
     :root {
       --bg: #080808;
       --surface: #0f0f0f;
       --surface2: #141414;
-      --border: rgba(255,255,255,0.06);
+      --border: rgba(255, 255, 255, 0.06);
       --accent: #e8c547;
-      --accent-dim: rgba(232,197,71,0.12);
-      --accent-glow: rgba(232,197,71,0.04);
+      --accent-dim: rgba(232, 197, 71, 0.12);
+      --accent-glow: rgba(232, 197, 71, 0.04);
       --red: #c0392b;
       --text: #d4d0c8;
       --text-dim: #5a5650;
@@ -22,28 +24,32 @@
       --user-bg: #131313;
       --bot-bg: #0c0c0c;
       --toggle-bg: #1a1a1a;
-      --toggle-border: rgba(255,255,255,0.1);
+      --toggle-border: rgba(255, 255, 255, 0.1);
     }
 
     [data-theme="light"] {
-      --bg: #f5f0e8;
-      --surface: #ede8dc;
-      --surface2: #e5dfd0;
-      --border: rgba(0,0,0,0.08);
+      --bg: #d4cfc8;
+      --surface: #d4cfc8;
+      --surface2: #d4cfc8;
+      --border: rgba(0, 0, 0, 0.08);
       --accent: #b8860b;
-      --accent-dim: rgba(184,134,11,0.1);
-      --accent-glow: rgba(184,134,11,0.04);
+      --accent-dim: rgba(184, 134, 11, 0.1);
+      --accent-glow: rgba(184, 134, 11, 0.04);
       --red: #c0392b;
       --text: #000000;
       --text-dim: #000000;
       --text-muted: #000000;
-      --user-bg: #ede8dc;
+      --user-bg: #d4cfc8;;
       --bot-bg: #f0ebe0;
       --toggle-bg: #ddd8cc;
-      --toggle-border: rgba(0,0,0,0.1);
+      --toggle-border: rgba(0, 0, 0, 0.1);
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       background: var(--bg);
@@ -62,13 +68,11 @@
       content: '';
       position: fixed;
       inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.03) 2px,
-        rgba(0,0,0,0.03) 4px
-      );
+      background: repeating-linear-gradient(0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.03) 2px,
+          rgba(0, 0, 0, 0.03) 4px);
       pointer-events: none;
       z-index: 1000;
     }
@@ -149,8 +153,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
     }
 
     .doc-count {
@@ -163,7 +174,9 @@
       border-radius: 4px;
     }
 
-    .doc-count span { color: var(--accent); }
+    .doc-count span {
+      color: var(--accent);
+    }
 
     /* ── THEME TOGGLE ── */
     .theme-toggle {
@@ -236,71 +249,465 @@
 
     /* ── SIDEBAR ── */
     .sidebar {
-      width: 220px;
+      width: 248px;
       border-right: 1px solid var(--border);
       background: var(--surface);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      padding: 24px 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
       transition: background 0.3s ease, border-color 0.3s ease;
     }
 
-    .sidebar-label {
-      font-size: 9px;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 0 20px;
-      margin-bottom: 12px;
+    .sidebar::-webkit-scrollbar {
+      width: 3px;
     }
 
-    .sidebar-item {
-      padding: 10px 20px;
-      font-size: 11px;
-      color: var(--text-dim);
-      letter-spacing: 0.05em;
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+
+    /* Section wrapper */
+    .sb-section {
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+    }
+
+    /* Section header (collapsible trigger) */
+    .sb-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px 10px;
       cursor: pointer;
-      border-left: 2px solid transparent;
-      transition: all 0.2s;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .sb-head:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .sb-head-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sb-label {
+      font-size: 8.5px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .sb-section-icon {
+      font-size: 10px;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .sb-chevron {
+      font-size: 9px;
+      color: var(--text-muted);
+      transition: transform 0.2s ease;
+      opacity: 0.5;
+    }
+
+    .sb-section.collapsed .sb-chevron {
+      transform: rotate(-90deg);
+    }
+
+    /* Section body */
+    .sb-body {
+      overflow: hidden;
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+      max-height: 400px;
+      opacity: 1;
+    }
+
+    .sb-section.collapsed .sb-body {
+      max-height: 0;
+      opacity: 0;
+    }
+
+    /* ── SESSION ── */
+    .sb-terminal-row {
       display: flex;
       align-items: center;
       gap: 10px;
+      padding: 8px 16px 10px;
+      border-left: 2px solid var(--accent);
+      background: var(--accent-dim);
+      margin: 0 0 6px;
     }
 
-    .sidebar-item:hover {
+    .sb-terminal-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2ecc71;
+      flex-shrink: 0;
+      animation: pulse 2s infinite;
+    }
+
+    .sb-terminal-label {
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+    }
+
+    .sb-recent-label {
+      font-size: 8px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 4px 16px 6px;
+    }
+
+    .sb-recent-list {
+      padding: 0 0 8px;
+    }
+
+    .sb-recent-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      font-size: 10px;
+      color: var(--text-dim);
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      line-height: 1.4;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sb-recent-item:hover {
       color: var(--text);
       background: var(--accent-glow);
-      border-left-color: var(--accent);
+      border-left-color: rgba(232, 197, 71, 0.4);
     }
 
-    .sidebar-item.active {
-      color: var(--accent);
-      background: var(--accent-dim);
-      border-left-color: var(--accent);
-    }
-
-    .sidebar-icon {
-      font-size: 13px;
-      opacity: 0.6;
-    }
-
-    .sidebar-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 20px 0;
-    }
-
-    .sidebar-warning {
-      margin: 0 16px;
-      padding: 12px;
-      background: rgba(192,57,43,0.08);
-      border: 1px solid rgba(192,57,43,0.2);
-      border-radius: 6px;
+    .sb-recent-icon {
       font-size: 9px;
-      line-height: 1.6;
-      color: rgba(192,57,43,0.8);
+      opacity: 0.4;
+      flex-shrink: 0;
+    }
+
+    .sb-recent-empty {
+      padding: 6px 16px 10px;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-style: italic;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── ACTIVE CONTEXT ── */
+    .sb-context-grid {
+      padding: 4px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sb-ctx-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9.5px;
+      letter-spacing: 0.04em;
+    }
+
+    .sb-ctx-key {
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      font-size: 8.5px;
+    }
+
+    .sb-ctx-val {
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .sb-ctx-val.green {
+      color: #2ecc71;
+    }
+
+    .sb-source-tags {
+      padding: 0 16px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .sb-tag {
+      font-size: 8px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid rgba(232, 197, 71, 0.25);
+      color: rgba(232, 197, 71, 0.7);
+      background: rgba(232, 197, 71, 0.05);
+    }
+
+    /* ── KEY FIGURES ── */
+    .sb-figures-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px 12px 12px;
+    }
+
+    .sb-figure-btn {
+      padding: 5px 8px;
+      font-size: 9.5px;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: all 0.15s;
+      text-align: left;
+      font-family: 'IBM Plex Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sb-figure-btn:hover {
+      color: var(--accent);
+      border-color: rgba(232, 197, 71, 0.35);
+      background: var(--accent-dim);
+    }
+
+    /* ── DOCUMENTS ── */
+    .sb-doc-nav {
+      padding: 2px 0 4px;
+    }
+
+    .sb-doc-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 16px;
+      font-size: 10.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      letter-spacing: 0.04em;
+      transition: all 0.15s;
+    }
+
+    .sb-doc-item:hover {
+      color: var(--text);
+      background: var(--accent-glow);
+      border-left-color: rgba(232, 197, 71, 0.4);
+    }
+
+    .sb-doc-icon {
+      font-size: 11px;
+      opacity: 0.5;
+    }
+
+    .sb-filter-label {
+      font-size: 8px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 6px 16px 4px;
+    }
+
+    .sb-filters {
+      padding: 2px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .sb-filter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sb-filter-name {
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 0.03em;
+    }
+
+    .sb-toggle {
+      width: 28px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .sb-toggle.on {
+      background: rgba(232, 197, 71, 0.25);
+      border-color: rgba(232, 197, 71, 0.4);
+    }
+
+    .sb-toggle::after {
+      content: '';
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      top: 1.5px;
+      left: 2px;
+      transition: all 0.2s;
+    }
+
+    .sb-toggle.on::after {
+      left: 15px;
+      background: var(--accent);
+    }
+
+    /* ── AI CONTROLS ── */
+    .sb-modes {
+      padding: 4px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sb-mode-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 10px;
+      font-size: 10px;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: all 0.15s;
+      font-family: 'IBM Plex Mono', monospace;
+      text-align: left;
+    }
+
+    .sb-mode-btn:hover {
+      color: var(--text);
+      border-color: rgba(232, 197, 71, 0.3);
+      background: var(--accent-glow);
+    }
+
+    .sb-mode-btn.active {
+      color: var(--accent);
+      border-color: rgba(232, 197, 71, 0.45);
+      background: var(--accent-dim);
+    }
+
+    .sb-mode-icon {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    .sb-mode-active-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-left: auto;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    .sb-mode-btn.active .sb-mode-active-dot {
+      display: block;
+    }
+
+    /* ── DEBUG PANEL ── */
+    .sb-debug-grid {
+      padding: 4px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .sb-dbg-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sb-dbg-key {
+      font-size: 8.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .sb-dbg-val {
+      font-size: 9px;
+      color: #4a9eff;
       letter-spacing: 0.05em;
+    }
+
+    .sb-dbg-val.amber {
+      color: var(--accent);
+    }
+
+    .sb-dbg-val.green {
+      color: #2ecc71;
+    }
+
+    .sb-dbg-val.dim {
+      color: var(--text-dim);
+    }
+
+    .sb-latency-badge {
+      font-size: 8px;
+      padding: 1px 6px;
+      border-radius: 2px;
+      background: rgba(74, 158, 255, 0.1);
+      border: 1px solid rgba(74, 158, 255, 0.2);
+      color: #4a9eff;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── SIDEBAR WARNING ── */
+    .sidebar-warning {
+      margin: 12px 12px 16px;
+      padding: 10px 12px;
+      background: rgba(192, 57, 43, 0.06);
+      border: 1px solid rgba(192, 57, 43, 0.18);
+      border-radius: 5px;
+      font-size: 8.5px;
+      line-height: 1.65;
+      color: rgba(192, 57, 43, 0.75);
+      letter-spacing: 0.04em;
+    }
+
+    .sidebar-warning-icon {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 10px;
     }
 
     /* ── CHAT AREA ── */
@@ -320,7 +727,9 @@
       flex-shrink: 0;
     }
 
-    .breadcrumb span { color: var(--text-dim); }
+    .breadcrumb span {
+      color: var(--text-dim);
+    }
 
     #chat {
       flex: 1;
@@ -333,9 +742,18 @@
       scrollbar-color: var(--border) transparent;
     }
 
-    #chat::-webkit-scrollbar { width: 4px; }
-    #chat::-webkit-scrollbar-track { background: transparent; }
-    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    #chat::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #chat::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #chat::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
 
     .msg-block {
       display: flex;
@@ -345,11 +763,20 @@
       animation: fadeIn 0.3s ease;
     }
 
-    .msg-block:last-child { border-bottom: none; }
+    .msg-block:last-child {
+      border-bottom: none;
+    }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .msg-prefix {
@@ -360,8 +787,13 @@
       flex-shrink: 0;
     }
 
-    .msg-prefix.user-prefix { color: var(--accent); }
-    .msg-prefix.bot-prefix { color: var(--red); }
+    .msg-prefix.user-prefix {
+      color: var(--accent);
+    }
+
+    .msg-prefix.bot-prefix {
+      color: var(--red);
+    }
 
     .msg-content {
       flex: 1;
@@ -379,7 +811,7 @@
       margin-top: 12px;
       padding: 10px 14px;
       background: var(--accent-dim);
-      border: 1px solid rgba(232,197,71,0.15);
+      border: 1px solid rgba(232, 197, 71, 0.15);
       border-radius: 4px;
       font-size: 10px;
       letter-spacing: 0.12em;
@@ -404,12 +836,27 @@
       animation: blink 1.2s infinite;
     }
 
-    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    .loading-dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .loading-dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
 
     @keyframes blink {
-      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-      40% { opacity: 1; transform: scale(1); }
+
+      0%,
+      80%,
+      100% {
+        opacity: 0.2;
+        transform: scale(0.8);
+      }
+
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
 
     .welcome {
@@ -481,7 +928,7 @@
     }
 
     .input-wrapper:focus-within {
-      border-color: rgba(232,197,71,0.4);
+      border-color: rgba(232, 197, 71, 0.4);
     }
 
     .input-prompt {
@@ -508,7 +955,9 @@
       letter-spacing: 0.03em;
     }
 
-    input::placeholder { color: var(--text-muted); }
+    input::placeholder {
+      color: var(--text-muted);
+    }
 
     button {
       background: var(--accent);
@@ -524,8 +973,13 @@
       flex-shrink: 0;
     }
 
-    button:hover { opacity: 0.85; }
-    button:active { opacity: 0.7; }
+    button:hover {
+      opacity: 0.85;
+    }
+
+    button:active {
+      opacity: 0.7;
+    }
 
     .input-hint {
       margin-top: 10px;
@@ -551,7 +1005,7 @@
     }
 
     .media-item {
-      border: 1px solid rgba(232,197,71,0.2);
+      border: 1px solid rgba(232, 197, 71, 0.2);
       border-radius: 6px;
       overflow: hidden;
       max-width: 280px;
@@ -583,157 +1037,341 @@
     }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      header { padding: 0 20px; }
-      #chat { padding: 20px; }
-      .input-area { padding: 16px 20px; }
-      .header-sub { display: none; }
+      .sidebar {
+        display: none;
+      }
+
+      header {
+        padding: 0 20px;
+      }
+
+      #chat {
+        padding: 20px;
+      }
+
+      .input-area {
+        padding: 16px 20px;
+      }
+
+      .header-sub {
+        display: none;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<!-- HEADER -->
-<header>
-  <div class="header-left">
-    <div class="logo-text">EPSTEIN FILES</div>
-    <div class="header-divider"></div>
-    <div class="header-sub">Epstein Document Intelligence</div>
-  </div>
-  <div class="header-right">
-    <div class="status-dot">
-      <div class="dot"></div>
-      SYSTEM ONLINE
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <div class="logo-text">EPSTEIN FILES rag model</div>
+      <div class="header-divider"></div>
+      <div class="header-sub">Made By Hardikk</div>
     </div>
-    <div class="doc-count">INDEXED: <span>33715</span> CHUNKS</div>
-
-    <!-- THEME TOGGLE -->
-    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-      <span class="toggle-icon" id="toggle-icon">🌙</span>
-      <div class="toggle-track">
-        <div class="toggle-thumb"></div>
+    <div class="header-right">
+      <div class="status-dot">
+        <div class="dot"></div>
+        SYSTEM ONLINE
       </div>
-      <span class="toggle-label" id="toggle-label">DARK</span>
-    </div>
-  </div>
-</header>
+      <div class="doc-count">INDEXED: <span>33715</span> CHUNKS</div>
 
-<!-- LAYOUT -->
-<div class="layout">
-
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sidebar-label">Navigation</div>
-    <div class="sidebar-item active">
-      <span class="sidebar-icon">⬡</span> Research Terminal
-    </div>
-    <div class="sidebar-item">
-      <span class="sidebar-icon">◈</span> Document Index
-    </div>
-    <div class="sidebar-item">
-      <span class="sidebar-icon">◎</span> Key Figures
-    </div>
-    <div class="sidebar-item">
-      <span class="sidebar-icon">◇</span> Timeline
-    </div>
-
-    <hr class="sidebar-divider">
-
-    <div class="sidebar-label">Sources</div>
-    <div class="sidebar-item">
-      <span class="sidebar-icon">▸</span> Court Documents
-    </div>
-    <div class="sidebar-item">
-      <span class="sidebar-icon">▸</span> SDNY Filings
-    </div>
-    <div class="sidebar-item">
-      <span class="sidebar-icon">▸</span> Giuffre v Maxwell
-    </div>
-
-    <hr class="sidebar-divider">
-
-    <div class="sidebar-warning">
-      ⚠ FOR RESEARCH PURPOSES ONLY. CONTENT SOURCED FROM PUBLIC COURT RECORDS.
-    </div>
-  </div>
-
-  <!-- CHAT -->
-  <div class="chat-container">
-    <div class="breadcrumb">
-      EPSTEIN-RAG / <span>research-terminal</span> / <span>active-session</span>
-    </div>
-
-    <div id="chat">
-      <div class="welcome">
-        <div class="welcome-title">RESEARCH TERMINAL</div>
-        <div class="welcome-desc">
-          Query the Epstein court document database. All responses are sourced strictly from indexed legal documents. This system will not speculate beyond available evidence.
+      <!-- THEME TOGGLE -->
+      <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <span class="toggle-icon" id="toggle-icon">🌙</span>
+        <div class="toggle-track">
+          <div class="toggle-thumb"></div>
         </div>
-        <div class="suggested">
-          <div class="suggested-btn" onclick="fillQuery(this)">Who is Ghislaine Maxwell?</div>
-          <div class="suggested-btn" onclick="fillQuery(this)">What is Case 18-2868?</div>
-          <div class="suggested-btn" onclick="fillQuery(this)">What did Virginia Giuffre claim?</div>
-          <div class="suggested-btn" onclick="fillQuery(this)">What court ordered the unsealing?</div>
+        <span class="toggle-label" id="toggle-label">DARK</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+
+      <!-- ═══ SESSION ═══ -->
+      <div class="sb-section" id="sec-session">
+        <div class="sb-head" onclick="toggleSection('sec-session')">
+          <div class="sb-head-left">
+            <span class="sb-section-icon">◈</span>
+            <span class="sb-label">Session</span>
+          </div>
+          <span class="sb-chevron">▾</span>
+        </div>
+        <div class="sb-body">
+          <div class="sb-terminal-row">
+            <div class="sb-terminal-dot"></div>
+            <span class="sb-terminal-label">Research Terminal</span>
+          </div>
+          <div class="sb-recent-label">Recent Queries</div>
+          <div class="sb-recent-list" id="recent-queries">
+            <div class="sb-recent-empty">No queries yet.</div>
+          </div>
         </div>
       </div>
+
+      <!-- ═══ ACTIVE CONTEXT ═══ -->
+      <div class="sb-section" id="sec-context">
+        <div class="sb-head" onclick="toggleSection('sec-context')">
+          <div class="sb-head-left">
+            <span class="sb-section-icon">◎</span>
+            <span class="sb-label">Active Context</span>
+          </div>
+          <span class="sb-chevron">▾</span>
+        </div>
+        <div class="sb-body">
+          <div class="sb-context-grid">
+            <div class="sb-ctx-row">
+              <span class="sb-ctx-key">Status</span>
+              <span class="sb-ctx-val green">INDEXED</span>
+            </div>
+            <div class="sb-ctx-row">
+              <span class="sb-ctx-key">Chunks Loaded</span>
+              <span class="sb-ctx-val" id="ctx-chunks">33,715</span>
+            </div>
+            <div class="sb-ctx-row">
+              <span class="sb-ctx-key">Top-K Results</span>
+              <span class="sb-ctx-val">5</span>
+            </div>
+            <div class="sb-ctx-row">
+              <span class="sb-ctx-key">Retrieval</span>
+              <span class="sb-ctx-val">FAISS · L2</span>
+            </div>
+          </div>
+          <div class="sb-source-tags">
+            <span class="sb-tag">SDNY Filing</span>
+            <span class="sb-tag">Court Docs</span>
+            <span class="sb-tag">Depositions</span>
+            <span class="sb-tag">Flight Logs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ KEY FIGURES ═══ -->
+      <div class="sb-section" id="sec-figures">
+        <div class="sb-head" onclick="toggleSection('sec-figures')">
+          <div class="sb-head-left">
+            <span class="sb-section-icon">◉</span>
+            <span class="sb-label">Key Figures</span>
+          </div>
+          <span class="sb-chevron">▾</span>
+        </div>
+        <div class="sb-body">
+          <div class="sb-figures-grid">
+            <button class="sb-figure-btn" onclick="insertEntity('Jeffrey Epstein')">Jeffrey Epstein</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Ghislaine Maxwell')">G. Maxwell</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Virginia Giuffre')">V. Giuffre</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Les Wexner')">Les Wexner</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Alan Dershowitz')">A. Dershowitz</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Prince Andrew')">Prince Andrew</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Jean-Luc Brunel')">J-L Brunel</button>
+            <button class="sb-figure-btn" onclick="insertEntity('Bill Richardson')">B. Richardson</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ DOCUMENTS ═══ -->
+      <div class="sb-section" id="sec-documents">
+        <div class="sb-head" onclick="toggleSection('sec-documents')">
+          <div class="sb-head-left">
+            <span class="sb-section-icon">◫</span>
+            <span class="sb-label">Documents</span>
+          </div>
+          <span class="sb-chevron">▾</span>
+        </div>
+        <div class="sb-body">
+          <div class="sb-doc-nav">
+            <div class="sb-doc-item">
+              <span class="sb-doc-icon">◈</span> Document Index
+            </div>
+            <div class="sb-doc-item">
+              <span class="sb-doc-icon">◇</span> Timeline
+            </div>
+          </div>
+          <div class="sb-filter-label">Filters</div>
+          <div class="sb-filters">
+            <div class="sb-filter-row">
+              <span class="sb-filter-name">Court Docs</span>
+              <div class="sb-toggle on" onclick="toggleFilter(this)" data-filter="court"></div>
+            </div>
+            <div class="sb-filter-row">
+              <span class="sb-filter-name">Depositions</span>
+              <div class="sb-toggle on" onclick="toggleFilter(this)" data-filter="depo"></div>
+            </div>
+            <div class="sb-filter-row">
+              <span class="sb-filter-name">Flight Logs</span>
+              <div class="sb-toggle" onclick="toggleFilter(this)" data-filter="flight"></div>
+            </div>
+            <div class="sb-filter-row">
+              <span class="sb-filter-name">Media Evidence</span>
+              <div class="sb-toggle" onclick="toggleFilter(this)" data-filter="media"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ AI CONTROLS ═══ -->
+      <div class="sb-section" id="sec-ai">
+        <div class="sb-head" onclick="toggleSection('sec-ai')">
+          <div class="sb-head-left">
+            <span class="sb-section-icon">⬡</span>
+            <span class="sb-label">AI Controls</span>
+          </div>
+          <span class="sb-chevron">▾</span>
+        </div>
+        <div class="sb-body">
+          <div class="sb-modes" id="ai-modes">
+            <button class="sb-mode-btn active" data-mode="strict" onclick="setMode(this)">
+              <span class="sb-mode-icon">◈</span>
+              Strict Evidence
+              <span class="sb-mode-active-dot"></span>
+            </button>
+            <button class="sb-mode-btn" data-mode="summary" onclick="setMode(this)">
+              <span class="sb-mode-icon">◉</span>
+              Summary Mode
+              <span class="sb-mode-active-dot"></span>
+            </button>
+            <button class="sb-mode-btn" data-mode="timeline" onclick="setMode(this)">
+              <span class="sb-mode-icon">◇</span>
+              Timeline Mode
+              <span class="sb-mode-active-dot"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ DEBUG PANEL ═══ -->
+      <div class="sb-section collapsed" id="sec-debug">
+        <div class="sb-head" onclick="toggleSection('sec-debug')">
+          <div class="sb-head-left">
+            <span class="sb-section-icon">⌥</span>
+            <span class="sb-label">Debug Panel</span>
+          </div>
+          <span class="sb-chevron">▾</span>
+        </div>
+        <div class="sb-body">
+          <div class="sb-debug-grid">
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Model</span>
+              <span class="sb-dbg-val amber">gemini-2.5-flash</span>
+            </div>
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Embedding</span>
+              <span class="sb-dbg-val">MiniLM-L6-v2</span>
+            </div>
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Top-K</span>
+              <span class="sb-dbg-val dim">5</span>
+            </div>
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Index</span>
+              <span class="sb-dbg-val">FAISS · L2</span>
+            </div>
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Latency</span>
+              <span class="sb-latency-badge" id="dbg-latency">— ms</span>
+            </div>
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Session</span>
+              <span class="sb-dbg-val green" id="dbg-session">ACTIVE</span>
+            </div>
+            <div class="sb-dbg-row">
+              <span class="sb-dbg-key">Queries</span>
+              <span class="sb-dbg-val dim" id="dbg-query-count">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WARNING -->
+      <div class="sidebar-warning">
+        <span class="sidebar-warning-icon">⚠</span>
+        FOR RESEARCH PURPOSES ONLY. CONTENT SOURCED FROM PUBLIC COURT RECORDS.
+      </div>
+
     </div>
 
-    <!-- INPUT -->
-    <div class="input-area">
-      <div class="input-wrapper">
-        <div class="input-prompt">QUERY://</div>
-        <input id="input" type="text"
-               placeholder="Enter your research query..."
-               onkeydown="if(event.key==='Enter') sendMessage()">
-        <button onclick="sendMessage()">EXECUTE</button>
+    <!-- CHAT -->
+    <div class="chat-container">
+      <div class="breadcrumb">
+        EPSTEIN-RAG / <span>research-terminal</span> / <span>active-session</span>
       </div>
-      <div class="input-hint">Press <kbd>ENTER</kbd> to send · Responses sourced from indexed documents only</div>
+
+      <div id="chat">
+        <div class="welcome">
+          <div class="welcome-title">RESEARCH TERMINAL</div>
+          <div class="welcome-desc">
+            Query the Epstein court document database. All responses are sourced strictly from indexed legal documents.
+            This system will not speculate beyond available evidence.
+          </div>
+          <div class="suggested">
+            <div class="suggested-btn" onclick="fillQuery(this)">Who is Ghislaine Maxwell?</div>
+  
+            <div class="suggested-btn" onclick="fillQuery(this)">What did Virginia Giuffre claim?</div>
+            
+          </div>
+        </div>
+      </div>
+
+      <!-- INPUT -->
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-prompt">QUERY://</div>
+          <input id="input" type="text" placeholder="Enter your research query..."
+            onkeydown="if(event.key==='Enter') sendMessage()">
+          <button onclick="sendMessage()">EXECUTE</button>
+        </div>
+        <div class="input-hint">Press <kbd>ENTER</kbd> to send · Responses sourced from indexed documents only</div>
+      </div>
     </div>
+
   </div>
 
-</div>
+  <script>
+    // ── Theme toggle ──
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute("data-theme") === "dark";
+      html.setAttribute("data-theme", isDark ? "light" : "dark");
+      document.getElementById("toggle-icon").textContent = isDark ? "☀️" : "🌙";
+      document.getElementById("toggle-label").textContent = isDark ? "LIGHT" : "DARK";
+      localStorage.setItem("theme", isDark ? "light" : "dark");
+    }
 
-<script>
-  // ── Theme toggle ──
-  function toggleTheme() {
-    const html = document.documentElement;
-    const isDark = html.getAttribute("data-theme") === "dark";
-    html.setAttribute("data-theme", isDark ? "light" : "dark");
-    document.getElementById("toggle-icon").textContent = isDark ? "☀️" : "🌙";
-    document.getElementById("toggle-label").textContent = isDark ? "LIGHT" : "DARK";
-    localStorage.setItem("theme", isDark ? "light" : "dark");
-  }
+    // Restore saved theme on load
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    if (savedTheme === "light") {
+      document.getElementById("toggle-icon").textContent = "☀️";
+      document.getElementById("toggle-label").textContent = "LIGHT";
+    }
 
-  // Restore saved theme on load
-  const savedTheme = localStorage.getItem("theme") || "dark";
-  document.documentElement.setAttribute("data-theme", savedTheme);
-  if (savedTheme === "light") {
-    document.getElementById("toggle-icon").textContent = "☀️";
-    document.getElementById("toggle-label").textContent = "LIGHT";
-  }
+    // ── Chat ──
+    function fillQuery(el) {
+      document.getElementById("input").value = el.textContent;
+      document.getElementById("input").focus();
+    }
 
-  // ── Chat ──
-  function fillQuery(el) {
-    document.getElementById("input").value = el.textContent;
-    document.getElementById("input").focus();
-  }
+    async function _sendMessageCore() {
+      const input = document.getElementById("input");
+      const chat = document.getElementById("chat");
+      const question = input.value.trim();
+      if (!question) return;
 
-  async function sendMessage() {
-    const input = document.getElementById("input");
-    const chat = document.getElementById("chat");
-    const question = input.value.trim();
-    if (!question) return;
-
-    chat.innerHTML += `
+      chat.innerHTML += `
       <div class="msg-block">
         <div class="msg-prefix user-prefix">YOU://</div>
         <div class="msg-content user-content">${question}</div>
       </div>`;
-    input.value = "";
-    chat.scrollTop = chat.scrollHeight;
+      input.value = "";
+      chat.scrollTop = chat.scrollHeight;
 
-    const loadingId = "load_" + Date.now();
-    chat.innerHTML += `
+      const loadingId = "load_" + Date.now();
+      chat.innerHTML += `
       <div class="msg-block" id="${loadingId}">
         <div class="msg-prefix bot-prefix">SYS://</div>
         <div class="msg-content">
@@ -742,58 +1380,209 @@
           </div>
         </div>
       </div>`;
-    chat.scrollTop = chat.scrollHeight;
+      chat.scrollTop = chat.scrollHeight;
 
-    try {
-      const res = await fetch("/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question })
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question,
+            mode: currentMode || 'strict',
+            filters: getActiveFilters(),
+          })
+        });
+        const data = await res.json();
 
-      const sources = data.sources?.length
-        ? `<div class="sources-block">▸ SOURCE: ${data.sources.join(" · ")}</div>`
-        : "";
+        const sources = data.sources?.length
+          ? `<div class="sources-block">▸ SOURCE: ${data.sources.join(" · ")}${data.mode ? ` &nbsp;|&nbsp; MODE: <span style="color:var(--accent);text-transform:uppercase">${data.mode}</span>` : ''}</div>`
+          : "";
 
-      let mediaHtml = "";
-      if (data.media && data.media.length > 0) {
-        const mediaItems = data.media.map(item => {
-          const url = "/media/" + item.path.replace("data/", "");
-          if (item.type === "image") {
-            return `<div class="media-item">
+        let mediaHtml = "";
+        if (data.media && data.media.length > 0) {
+          const mediaItems = data.media.map(item => {
+            const url = "/media/" + item.path.replace("data/", "");
+            if (item.type === "image") {
+              return `<div class="media-item">
               <img src="${url}" alt="${item.filename}">
               <div class="media-label">▸ ${item.filename}</div>
             </div>`;
-          } else {
-            return `<div class="media-item">
+            } else {
+              return `<div class="media-item">
               <video controls>
                 <source src="${url}">
               </video>
               <div class="media-label">▸ ${item.filename}</div>
             </div>`;
-          }
-        }).join("");
-        mediaHtml = `<div class="media-block">${mediaItems}</div>`;
-      }
+            }
+          }).join("");
+          mediaHtml = `<div class="media-block">${mediaItems}</div>`;
+        }
 
-      document.getElementById(loadingId).outerHTML = `
+        document.getElementById(loadingId).outerHTML = `
         <div class="msg-block">
           <div class="msg-prefix bot-prefix">SYS://</div>
           <div class="msg-content">${data.answer}${sources}${mediaHtml}</div>
         </div>`;
 
-    } catch (err) {
-      document.getElementById(loadingId).outerHTML = `
+      } catch (err) {
+        document.getElementById(loadingId).outerHTML = `
         <div class="msg-block">
           <div class="msg-prefix bot-prefix">ERR://</div>
           <div class="msg-content" style="color:#c0392b">Connection failed. Ensure server is running.</div>
         </div>`;
+      }
+
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    chat.scrollTop = chat.scrollHeight;
-  }
-</script>
+    // ── SIDEBAR LOGIC ──
+
+    // Collapsible sections
+    function toggleSection(id) {
+      const sec = document.getElementById(id);
+      sec.classList.toggle('collapsed');
+      // Persist collapse state
+      const collapsed = JSON.parse(localStorage.getItem('sb-collapsed') || '{}');
+      collapsed[id] = sec.classList.contains('collapsed');
+      localStorage.setItem('sb-collapsed', JSON.stringify(collapsed));
+    }
+
+    // Restore collapse states on load
+    (function restoreCollapseState() {
+      const collapsed = JSON.parse(localStorage.getItem('sb-collapsed') || '{}');
+      Object.entries(collapsed).forEach(([id, isCollapsed]) => {
+        const el = document.getElementById(id);
+        if (el && isCollapsed) el.classList.add('collapsed');
+        else if (el) el.classList.remove('collapsed');
+      });
+    })();
+
+    // ── RECENT QUERIES ──
+    const MAX_RECENT = 8;
+
+    function getRecentQueries() {
+      return JSON.parse(localStorage.getItem('recent-queries') || '[]');
+    }
+
+    function saveQuery(query) {
+      const recent = getRecentQueries().filter(q => q !== query);
+      recent.unshift(query);
+      if (recent.length > MAX_RECENT) recent.splice(MAX_RECENT);
+      localStorage.setItem('recent-queries', JSON.stringify(recent));
+      renderRecentQueries();
+      // Update debug count
+      const count = parseInt(document.getElementById('dbg-query-count').textContent || '0') + 1;
+      document.getElementById('dbg-query-count').textContent = count;
+    }
+
+    function renderRecentQueries() {
+      const container = document.getElementById('recent-queries');
+      const queries = getRecentQueries();
+      if (!queries.length) {
+        container.innerHTML = '<div class="sb-recent-empty">No queries yet.</div>';
+        return;
+      }
+      container.innerHTML = queries.map(q =>
+        `<div class="sb-recent-item" onclick="fillQueryFromSidebar(this)" title="${q}">
+         <span class="sb-recent-icon">▸</span>
+         <span style="overflow:hidden;text-overflow:ellipsis">${q}</span>
+       </div>`
+      ).join('');
+    }
+
+    function fillQueryFromSidebar(el) {
+      const text = el.querySelector('span:last-child').textContent.trim();
+      document.getElementById('input').value = text;
+      document.getElementById('input').focus();
+    }
+
+    // Render on load
+    renderRecentQueries();
+
+    // ── ENTITY INJECTION ──
+    function insertEntity(name) {
+      const input = document.getElementById('input');
+      const current = input.value.trim();
+      input.value = current ? current + ' ' + name : name;
+      input.focus();
+      // Brief flash effect on the sidebar section header
+      const head = document.querySelector('#sec-figures .sb-label');
+      head.style.color = 'var(--accent)';
+      setTimeout(() => { head.style.color = ''; }, 600);
+    }
+
+    // ── FILTER TOGGLES ──
+    function toggleFilter(el) {
+      el.classList.toggle('on');
+      const state = JSON.parse(localStorage.getItem('sb-filters') || '{}');
+      state[el.dataset.filter] = el.classList.contains('on');
+      localStorage.setItem('sb-filters', JSON.stringify(state));
+    }
+
+    // Returns array of active filter keys to send to the backend
+    // e.g. ['court', 'depo'] — if all are on (or all off), returns null (no filtering)
+    function getActiveFilters() {
+      const toggles = document.querySelectorAll('.sb-toggle[data-filter]');
+      const allKeys = Array.from(toggles).map(el => el.dataset.filter);
+      const activeKeys = Array.from(toggles)
+        .filter(el => el.classList.contains('on'))
+        .map(el => el.dataset.filter);
+      // If all filters are on or all are off, don't restrict — return null
+      if (activeKeys.length === 0 || activeKeys.length === allKeys.length) return null;
+      return activeKeys;
+    }
+
+    // Restore filter states
+    (function restoreFilters() {
+      const state = JSON.parse(localStorage.getItem('sb-filters') || '{}');
+      document.querySelectorAll('.sb-toggle[data-filter]').forEach(el => {
+        const saved = state[el.dataset.filter];
+        if (saved === false) el.classList.remove('on');
+        else if (saved === true) el.classList.add('on');
+      });
+    })();
+
+    // ── AI MODE TOGGLE ──
+    let currentMode = localStorage.getItem('ai-mode') || 'strict';
+
+    function setMode(btn) {
+      document.querySelectorAll('.sb-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      localStorage.setItem('ai-mode', currentMode);
+      // Update breadcrumb hint
+      const modeLabels = { strict: 'STRICT EVIDENCE', summary: 'SUMMARY MODE', timeline: 'TIMELINE MODE' };
+      const hint = document.querySelector('.input-hint');
+      if (hint) {
+        hint.textContent = `Mode: ${modeLabels[currentMode]} · Press ENTER to send`;
+      }
+    }
+
+    // Restore AI mode
+    (function restoreMode() {
+      const saved = localStorage.getItem('ai-mode') || 'strict';
+      const btn = document.querySelector(`.sb-mode-btn[data-mode="${saved}"]`);
+      if (btn) {
+        document.querySelectorAll('.sb-mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    })();
+
+    // ── SIDEBAR sendMessage wrapper ──
+    // Wraps _sendMessageCore to add recent queries + live latency to debug panel
+    async function sendMessage() {
+      const input = document.getElementById('input');
+      const question = input.value.trim();
+      if (!question) return;
+      const t0 = Date.now();
+      saveQuery(question);
+      await _sendMessageCore();
+      const elapsed = Date.now() - t0;
+      document.getElementById('dbg-latency').textContent = elapsed + ' ms';
+    }
+  </script>
 
 </body>
+
 </html>
