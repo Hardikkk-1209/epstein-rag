@@ -1,2 +1,2 @@
-vectorstore/chunks.pkl filter=lfs diff=lfs merge=lfs -text
 vectorstore/faiss.index filter=lfs diff=lfs merge=lfs -text
+vectorstore/chunks.pkl filter=lfs diff=lfs merge=lfs -text
