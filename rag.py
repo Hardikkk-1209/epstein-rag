@@ -26,6 +26,13 @@ def get_client():
     global _client
     if _client is None:
         _client = genai.Client(api_key=GEMINI_API_KEY)
+        # Log models for debugging
+        try:
+            print("AVAILABLE MODELS:")
+            for m in _client.models.list():
+                print(f" - {m.name}")
+        except:
+            pass
     return _client
 
 # ─────────────────────────────────────────────
@@ -264,7 +271,7 @@ def ask(query: str, mode="strict", filters=None):
 
     try:
         response = get_client().models.generate_content(
-            model="gemini-1.5-flash-002",
+            model="gemini-1.5-flash-latest",
             contents=prompt,
         )
         answer = extract_text(response)
