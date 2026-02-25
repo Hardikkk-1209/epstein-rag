@@ -263,7 +263,7 @@ def ask(query: str, mode="strict", filters=None):
     prompt = prompt_builder(query, chunks)
 
     try:
-        response = get_client().models.generate_content(...)(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
         )
