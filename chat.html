@@ -39,7 +39,8 @@
       --text: #000000;
       --text-dim: #000000;
       --text-muted: #000000;
-      --user-bg: #d4cfc8;;
+      --user-bg: #d4cfc8;
+      ;
       --bot-bg: #f0ebe0;
       --toggle-bg: #ddd8cc;
       --toggle-border: rgba(0, 0, 0, 0.1);
@@ -1310,9 +1311,9 @@
           </div>
           <div class="suggested">
             <div class="suggested-btn" onclick="fillQuery(this)">Who is Ghislaine Maxwell?</div>
-  
+
             <div class="suggested-btn" onclick="fillQuery(this)">What did Virginia Giuffre claim?</div>
-            
+
           </div>
         </div>
       </div>
@@ -1387,7 +1388,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            question,
+            query: question,
             mode: currentMode || 'strict',
             filters: getActiveFilters(),
           })
