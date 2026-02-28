@@ -1,84 +1,66 @@
-import faiss
-import pickle
-import numpy as np
-import json
 import os
+import numpy as np
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from google import genai
+from pinecone import Pinecone
 
 # ─────────────────────────────────────────────
 # LOAD ENV
 # ─────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_PATH = os.path.join(BASE_DIR, ".env")
-
-load_dotenv(dotenv_path=ENV_PATH)
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "epstein-rag")
 
 if not GEMINI_API_KEY:
-    print("WARNING: GEMINI_API_KEY not set. Model calls will fail.")
-
-_client = None
-def get_client():
-    global _client
-    if _client is None:
-        _client = genai.Client(api_key=GEMINI_API_KEY)
-        # Log models for debugging
-        try:
-            print("AVAILABLE MODELS:")
-            for m in _client.models.list():
-                print(f" - {m.name}")
-        except:
-            pass
-    return _client
+    print("WARNING: GEMINI_API_KEY not set.")
+if not PINECONE_API_KEY:
+    print("WARNING: PINECONE_API_KEY not set.")
 
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 
-INDEX_PATH = os.path.join(BASE_DIR, "vectorstore/faiss.index")
-CHUNKS_PATH = os.path.join(BASE_DIR, "vectorstore/chunks.pkl")
-MEDIA_INDEX_PATH = os.path.join(BASE_DIR, "vectorstore/media_index.json")
-
 TOP_K_FETCH = 40
 TOP_K_FINAL = 5
 
 # ─────────────────────────────────────────────
-# LAZY LOADING — model/index load on first request
+# LAZY LOADING
 # ─────────────────────────────────────────────
 
 _model = None
 _index = None
-_all_chunks = None
-_media_index = None
+_gemini_client = None
 
-def get_resources():
-    global _model, _index, _all_chunks, _media_index
 
+def get_model():
+    global _model
     if _model is None:
         print("Loading SentenceTransformer model...")
         _model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _model
 
+
+def get_pinecone_index():
+    global _index
     if _index is None:
-        print("Loading FAISS index...")
-        _index = faiss.read_index(INDEX_PATH)
+        print("Connecting to Pinecone...")
+        pc = Pinecone(api_key=PINECONE_API_KEY)
+        _index = pc.Index(PINECONE_INDEX_NAME)
+        print(f"Connected to Pinecone index: {PINECONE_INDEX_NAME}")
+    return _index
 
-    if _all_chunks is None:
-        print("Loading chunks...")
-        with open(CHUNKS_PATH, "rb") as f:
-            _all_chunks = pickle.load(f)
 
-    if _media_index is None:
-        try:
-            with open(MEDIA_INDEX_PATH, "r") as f:
-                _media_index = json.load(f)
-        except:
-            _media_index = []
+def get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    return _gemini_client
 
-    return _model, _index, _all_chunks, _media_index
 
 # ─────────────────────────────────────────────
 # FILTER CLASSIFIER
@@ -91,6 +73,7 @@ FILTER_KEYWORDS = {
     "media": ["miami herald", "new york times", "reporter", "journalist", "article"],
 }
 
+
 def classify_chunk(text: str) -> set:
     text_lower = text.lower()
     buckets = set()
@@ -98,6 +81,7 @@ def classify_chunk(text: str) -> set:
         if any(kw in text_lower for kw in keywords):
             buckets.add(category)
     return buckets
+
 
 # ─────────────────────────────────────────────
 # EPSTEIN RELEVANCE CHECK
@@ -109,32 +93,40 @@ EPSTEIN_KEYWORDS = {
     "donald trump", "bill gates"
 }
 
+
 def is_epstein_related(query: str) -> bool:
     query_lower = query.lower()
     if len(query_lower.split()) <= 2:
         return True
     return any(keyword in query_lower for keyword in EPSTEIN_KEYWORDS)
 
+
 # ─────────────────────────────────────────────
-# RETRIEVAL
+# RETRIEVAL via PINECONE
 # ─────────────────────────────────────────────
 
 def retrieve(query: str, active_filters=None):
-    model, index, all_chunks, _ = get_resources()
+    model = get_model()
+    index = get_pinecone_index()
 
-    query_vector = np.array(model.encode([query])).astype("float32")
+    query_vector = model.encode([query])[0].tolist()
 
     fetch_k = TOP_K_FETCH if active_filters else TOP_K_FINAL
-    distances, indices = index.search(query_vector, fetch_k)
+
+    results = index.query(
+        vector=query_vector,
+        top_k=fetch_k,
+        include_metadata=True
+    )
 
     candidates = []
-    for i, idx in enumerate(indices[0]):
-        if idx != -1:
-            candidates.append({
-                "text": all_chunks[idx]["text"],
-                "source": all_chunks[idx]["source"],
-                "score": float(distances[0][i]),
-            })
+    for match in results.matches:
+        metadata = match.metadata or {}
+        candidates.append({
+            "text": metadata.get("text", ""),
+            "source": metadata.get("source", "Unknown"),
+            "score": float(match.score),
+        })
 
     if not active_filters:
         return candidates[:TOP_K_FINAL]
@@ -149,29 +141,6 @@ def retrieve(query: str, active_filters=None):
 
     return filtered[:TOP_K_FINAL]
 
-# ─────────────────────────────────────────────
-# MEDIA MATCHING
-# ─────────────────────────────────────────────
-
-def find_related_media(query: str, answer: str = "", max_results: int = 3):
-    _, _, _, media_index = get_resources()
-
-    stop_words = {"the", "a", "an", "in", "on", "at", "to", "for", "of", "and", "or", "is"}
-    query_words = set(query.lower().split()) - stop_words
-
-    scored = []
-    for item in media_index:
-        if "extracted_images" not in item["path"]:
-            continue
-
-        filename_words = set(item["keywords"].split()) - stop_words
-        matches = query_words & filename_words
-
-        if matches:
-            scored.append((len(matches), item))
-
-    scored.sort(reverse=True, key=lambda x: x[0])
-    return [item for _, item in scored[:max_results]]
 
 # ─────────────────────────────────────────────
 # PROMPTS
@@ -196,6 +165,7 @@ QUESTION:
 
 ANSWER:"""
 
+
 def build_prompt_summary(query: str, chunks: list):
     context = "\n\n---\n\n".join(
         [f"[Source: {c['source']}]\n{c['text']}" for c in chunks]
@@ -209,6 +179,7 @@ QUESTION:
 {query}
 
 SUMMARY:"""
+
 
 def build_prompt_timeline(query: str, chunks: list):
     context = "\n\n---\n\n".join(
@@ -224,11 +195,13 @@ QUESTION:
 
 TIMELINE:"""
 
+
 MODE_PROMPT_BUILDERS = {
     "strict": build_prompt_strict,
     "summary": build_prompt_summary,
     "timeline": build_prompt_timeline,
 }
+
 
 # ─────────────────────────────────────────────
 # SAFE GEMINI RESPONSE PARSER
@@ -243,6 +216,7 @@ def extract_text(response):
     except:
         pass
     return "No response generated."
+
 
 # ─────────────────────────────────────────────
 # MAIN ASK FUNCTION
@@ -270,7 +244,7 @@ def ask(query: str, mode="strict", filters=None):
     prompt = prompt_builder(query, chunks)
 
     try:
-        response = get_client().models.generate_content(
+        response = get_gemini_client().models.generate_content(
             model="gemini-1.5-flash-latest",
             contents=prompt,
         )
@@ -278,12 +252,10 @@ def ask(query: str, mode="strict", filters=None):
     except Exception as e:
         answer = f"Model error: {str(e)}"
 
-    media = find_related_media(query, answer)
-
     return {
         "answer": answer,
         "sources": list(set(c["source"] for c in chunks)),
-        "media": media,
+        "media": [],
         "mode": mode,
         "filters_applied": filters or [],
     }
