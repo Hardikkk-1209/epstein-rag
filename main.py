@@ -36,3 +36,8 @@ def handle_ask(req: AskRequest):
 @app.get("/")
 def serve_ui():
     return FileResponse(os.path.join(BASE_DIR, "chat.html"))
+@app.get("/models")
+def list_models():
+    from rag import get_gemini_client
+    models = [m.name for m in get_gemini_client().models.list()]
+    return {"models": models}
