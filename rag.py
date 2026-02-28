@@ -245,7 +245,7 @@ def ask(query: str, mode="strict", filters=None):
 
     try:
         response = get_gemini_client().models.generate_content(
-            model="gemini-1.5-flash-latest",
+            model="gemini-2.0-flash",
             contents=prompt,
         )
         answer = extract_text(response)
