@@ -10,11 +10,11 @@ from pinecone import Pinecone
 # ─────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"))
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"), override=False)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "epstein-rag")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
+PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME", "epstein-rag")
 
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set.")
