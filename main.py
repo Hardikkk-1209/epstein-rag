@@ -41,3 +41,6 @@ def list_models():
     from rag import get_gemini_client
     models = [m.name for m in get_gemini_client().models.list()]
     return {"models": models}
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
