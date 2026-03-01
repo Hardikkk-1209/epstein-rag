@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
@@ -99,6 +100,27 @@ def is_epstein_related(query: str) -> bool:
     if len(query_lower.split()) <= 2:
         return True
     return any(keyword in query_lower for keyword in EPSTEIN_KEYWORDS)
+
+
+# ─────────────────────────────────────────────
+# QUERY SANITIZER
+# ─────────────────────────────────────────────
+
+STRIP_PHRASES = [
+    r"\bin the epstein files?\b",
+    r"\bin (?:the )?files?\b",
+    r"\bin (?:the )?documents?\b",
+    r"\bin (?:the )?records?\b",
+    r"\bepstein files?\b",
+    r"\bin the crimes?\b",
+]
+
+
+def sanitize_query(query: str) -> str:
+    cleaned = query
+    for phrase in STRIP_PHRASES:
+        cleaned = re.sub(phrase, "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip(" ?,.")
 
 
 # ─────────────────────────────────────────────
@@ -211,11 +233,15 @@ def extract_text(response):
     try:
         if hasattr(response, "text") and response.text:
             return response.text
-        if hasattr(response, "candidates"):
-            return response.candidates[0].content.parts[0].text
-    except:
-        pass
-    return "No response generated."
+        if hasattr(response, "candidates") and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, "finish_reason") and str(candidate.finish_reason) in ("SAFETY", "RECITATION", "OTHER"):
+                return None
+            if hasattr(candidate, "content") and candidate.content.parts:
+                return candidate.content.parts[0].text
+    except Exception as e:
+        print(f"extract_text error: {e}")
+    return None
 
 
 # ─────────────────────────────────────────────
@@ -231,11 +257,13 @@ def ask(query: str, mode="strict", filters=None):
             "media": [],
         }
 
+    query = sanitize_query(query)
+
     chunks = retrieve(query, active_filters=filters if filters else None)
 
     if not chunks:
         return {
-            "answer": "No relevant documents found.",
+            "answer": "Sorry, I don't have an answer for that, try a better prompt.",
             "sources": [],
             "media": [],
         }
@@ -249,8 +277,11 @@ def ask(query: str, mode="strict", filters=None):
             contents=prompt,
         )
         answer = extract_text(response)
+        if not answer:
+            answer = "Sorry, I don't have an answer for that, try a better prompt."
     except Exception as e:
-        answer = f"Model error: {str(e)}"
+        print(f"Gemini error: {e}")
+        answer = "Sorry, I don't have an answer for that, try a better prompt."
 
     return {
         "answer": answer,

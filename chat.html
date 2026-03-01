@@ -18,9 +18,9 @@
       --accent-dim: rgba(232, 197, 71, 0.12);
       --accent-glow: rgba(232, 197, 71, 0.04);
       --red: #c0392b;
-      --text: #d4d0c8;
-      --text-dim: #5a5650;
-      --text-muted: #3a3632;
+      --text: #ffffff;
+      --text-dim: #ffffff;
+      --text-muted: #ffffff;
       --user-bg: #131313;
       --bot-bg: #0c0c0c;
       --toggle-bg: #1a1a1a;
@@ -1068,7 +1068,7 @@
     <div class="header-left">
       <div class="logo-text">EPSTEIN FILES rag model</div>
       <div class="header-divider"></div>
-      <div class="header-sub">Made By Hardikk</div>
+      <div class="header-sub">Made By Hardikk (<a href="https://www.linkedin.com/in/hardik-patil-ba1a39306/" target="_blank" style="color: #0077b5; text-decoration: none; letter-spacing: 0.2em; text-transform: none;">LinkedIn</a>)</div>
     </div>
     <div class="header-right">
       <div class="status-dot">
@@ -1205,11 +1205,11 @@
             </div>
             <div class="sb-filter-row">
               <span class="sb-filter-name">Flight Logs</span>
-              <div class="sb-toggle" onclick="toggleFilter(this)" data-filter="flight"></div>
+              <div class="sb-toggle on" onclick="toggleFilter(this)" data-filter="flight"></div>
             </div>
             <div class="sb-filter-row">
               <span class="sb-filter-name">Media Evidence</span>
-              <div class="sb-toggle" onclick="toggleFilter(this)" data-filter="media"></div>
+              <div class="sb-toggle on" onclick="toggleFilter(this)" data-filter="media"></div>
             </div>
           </div>
         </div>
@@ -1535,14 +1535,18 @@
     }
 
     // Restore filter states
-    (function restoreFilters() {
-      const state = JSON.parse(localStorage.getItem('sb-filters') || '{}');
-      document.querySelectorAll('.sb-toggle[data-filter]').forEach(el => {
-        const saved = state[el.dataset.filter];
-        if (saved === false) el.classList.remove('on');
-        else if (saved === true) el.classList.add('on');
-      });
-    })();
+   (function restoreFilters() {
+  const state = JSON.parse(localStorage.getItem('sb-filters') || '{}');
+  document.querySelectorAll('.sb-toggle[data-filter]').forEach(el => {
+    const saved = state[el.dataset.filter];
+    // Default is ON — only turn off if explicitly saved as false
+    if (saved === false) {
+      el.classList.remove('on');
+    } else {
+      el.classList.add('on');
+    }
+  });
+})();
 
     // ── AI MODE TOGGLE ──
     let currentMode = localStorage.getItem('ai-mode') || 'strict';
